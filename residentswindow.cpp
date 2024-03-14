@@ -35,7 +35,7 @@ void ResidentsWindow::setFormState() {
     if (getSqlConnection(db)) {
         QSqlQuery query(db);
 
-        query.prepare("SELECT ImageURL, Name, Species, Age, Description FROM Residents");
+        query.prepare("SELECT ResidentID, ImageURL, Name, Species, Age, Description FROM Residents");
         if (query.exec()) {
             QTableWidget *tableWidget = ui->tableWidget;
 
@@ -43,37 +43,42 @@ void ResidentsWindow::setFormState() {
             tableWidget->clearContents();
 
             tableWidget->setRowCount(query.size());
-            tableWidget->setColumnCount(5);
+            tableWidget->setColumnCount(6);
 
             QStringList headers;
-            headers << "Изображение" << "Название" << "Вид" << "Возраст" << "Описание";
+            headers << "ID" << "Изображение" << "Название" << "Вид" << "Возраст" << "Описание";
             tableWidget->setHorizontalHeaderLabels(headers);
+            tableWidget->verticalHeader()->setVisible(false);
 
             int row = 0;
             while (query.next()) {
-                QString imageName = query.value(0).toString();
+                int id = query.value(0).toInt();
+                QTableWidgetItem *IdItem = new QTableWidgetItem(QString::number(id));
+                tableWidget->setItem(row, 0, IdItem);
+
+                QString imageName = query.value(1).toString();
                 QString imageUrl = QCoreApplication::applicationDirPath() + "/images/" + imageName;
                 QLabel *imageLabel = new QLabel;
                 QPixmap image(imageUrl);
                 image = image.scaled(100, 100, Qt::KeepAspectRatio);
                 imageLabel->setPixmap(image);
-                tableWidget->setCellWidget(row, 0, imageLabel);
+                tableWidget->setCellWidget(row, 1, imageLabel);
 
-                QString name = query.value(1).toString();
+                QString name = query.value(2).toString();
                 QTableWidgetItem *nameItem = new QTableWidgetItem(name);
-                tableWidget->setItem(row, 1, nameItem);
+                tableWidget->setItem(row, 2, nameItem);
 
-                QString species = query.value(2).toString();
+                QString species = query.value(3).toString();
                 QTableWidgetItem *speciesItem = new QTableWidgetItem(species);
-                tableWidget->setItem(row, 2, speciesItem);
+                tableWidget->setItem(row, 3, speciesItem);
 
-                int age = query.value(3).toInt();
+                int age = query.value(4).toInt();
                 QTableWidgetItem *ageItem = new QTableWidgetItem(QString::number(age));
-                tableWidget->setItem(row, 3, ageItem);
+                tableWidget->setItem(row, 4, ageItem);
 
-                QString description = query.value(4).toString();
+                QString description = query.value(5).toString();
                 QTableWidgetItem *descriptionItem = new QTableWidgetItem(description);
-                tableWidget->setItem(row, 4, descriptionItem);
+                tableWidget->setItem(row, 5, descriptionItem);
 
                 row++;
             }
@@ -120,7 +125,7 @@ void ResidentsWindow::on_Del_Button_clicked()
     int selectedRow = ui->tableWidget->currentRow();
 
     if (selectedRow >= 0) {
-        QTableWidgetItem *nameItem = ui->tableWidget->item(selectedRow, 1);
+        QTableWidgetItem *nameItem = ui->tableWidget->item(selectedRow, 2);
         QString name = nameItem->text();
         QSqlQuery query(db);
         query.prepare("DELETE FROM Residents WHERE Name = :name");
@@ -143,18 +148,20 @@ void ResidentsWindow::on_Save_Button_clicked()
     int currentRow = ui->tableWidget->currentRow();
 
     if (currentRow >= 0) {
-        QString imageURL = ui->tableWidget->cellWidget(currentRow, 0)->property("imageURL").toString();
-        QString name = ui->tableWidget->item(currentRow, 1)->text();
-        QString species = ui->tableWidget->item(currentRow, 2)->text();
-        int age = ui->tableWidget->item(currentRow, 3)->text().toInt();
-        QString description = ui->tableWidget->item(currentRow, 4)->text();
+        int residentID = ui->tableWidget->item(currentRow, 0)->text().toInt();
+        QString imageURL = ui->tableWidget->cellWidget(currentRow, 1)->property("imageURL").toString();
+        QString name = ui->tableWidget->item(currentRow, 2)->text();
+        QString species = ui->tableWidget->item(currentRow, 3)->text();
+        int age = ui->tableWidget->item(currentRow, 4)->text().toInt();
+        QString description = ui->tableWidget->item(currentRow, 5)->text();
 
         QSqlQuery query(db);
-        query.prepare("UPDATE Residents SET ImageURL = ImageURL, Species = :species, Age = :age, Description = :description WHERE Name = :name");
+        query.prepare("UPDATE Residents SET ImageURL = ImageURL, Name = :name, Species = :species, Age = :age, Description = :description WHERE ResidentID = :residentID");
+        query.bindValue(":name", name);
         query.bindValue(":species", species);
         query.bindValue(":age", age);
         query.bindValue(":description", description);
-        query.bindValue(":name", name);
+        query.bindValue(":residentID", residentID);
 
         if (query.exec()) {
             showMessageBox("Данные успешно обновлены в базе данных", "Удачно", QMessageBox::Ok, QMessageBox::Warning);
@@ -178,14 +185,14 @@ void ResidentsWindow::on_Image_Button_clicked()
             QLabel* imageLabel = new QLabel();
             QPixmap image(newImagePath);
             imageLabel->setPixmap(image.scaled(100, 100, Qt::KeepAspectRatio));
-            ui->tableWidget->setCellWidget(currentRow, 0, imageLabel);
+            ui->tableWidget->setCellWidget(currentRow, 1, imageLabel);
 
-            ui->tableWidget->cellWidget(currentRow, 0)->setProperty("imageURL", imageURL);
+            ui->tableWidget->cellWidget(currentRow, 1)->setProperty("imageURL", imageURL);
 
             QSqlQuery query(db);
             query.prepare("UPDATE Residents SET ImageURL = :imageURL WHERE Name = :name");
             query.bindValue(":imageURL", imageURL);
-            query.bindValue(":name", ui->tableWidget->item(currentRow, 1)->text());
+            query.bindValue(":name", ui->tableWidget->item(currentRow, 2)->text());
             if (query.exec()) {
                 showMessageBox("Изображение успешно обновлено в базе данных", "Удачно", QMessageBox::Ok, QMessageBox::Warning);
             } else {

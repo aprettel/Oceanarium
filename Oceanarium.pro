@@ -52,4 +52,4 @@ INSTALLS += \
     images \
     resources
 
-win32: RC_ICONS += resources/icon.ico
+#win32: RC_ICONS += resources/icon.ico
